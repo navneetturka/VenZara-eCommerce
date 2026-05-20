@@ -23,6 +23,9 @@ const ShopContextProvider = (props) => {
   const [cartItems, setCartItems] = useState({});
   const [products, setProducts] = useState([]);
   const [token, setToken] = useState(localStorage.getItem("token") || "");
+  const [discount, setDiscount] = useState(0);
+  const [shippingFee, setShippingFee] = useState(40);
+const [couponCode, setCouponCode] = useState("");
 
   const navigate = useNavigate();
 
@@ -198,18 +201,16 @@ const googleLogin = async () => {
       }
     );
 
-    if (response.data.success) {
+   if (response.data.success) {
+  const userToken = response.data.token;
 
-      const userToken = response.data.token;
+  setToken(userToken);
+  localStorage.setItem("token", userToken);
 
-      setToken(userToken);
-
-      localStorage.setItem("token", userToken);
-
-      navigate("/");
-
-      toast.success("Google Login Successful 🚀");
-    }
+  // ⭐ ADD THIS
+  const userId = response.data.userId;
+  localStorage.setItem("userId", userId);
+}
 
   } catch (error) {
     console.log(error);
@@ -271,6 +272,12 @@ const googleLogin = async () => {
     navigate,
     googleLogin,
     fetchProducts,
+    discount,
+setDiscount,
+couponCode,
+shippingFee,
+  setShippingFee,
+setCouponCode,
   };
 
   return (

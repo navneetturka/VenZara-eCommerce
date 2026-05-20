@@ -2,6 +2,7 @@ import React, { useContext, useState } from 'react'
 import { ShopContext } from '../context/ShopContext'
 import { toast } from "react-toastify";
 import axios from "axios";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 const Login = () => {
 
@@ -10,17 +11,30 @@ const Login = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
 
   const { backendUrl, login, register, googleLogin } = useContext(ShopContext)
 
   const OnSubmitHandler = async (event) => {
-    event.preventDefault()
+  event.preventDefault()
+if (currentState !== "Login" && password.length < 8) {
+  toast.error("Password must be at least 8 characters")
+  return
+}
+  setLoading(true)
+
+  try {
     if (currentState === 'Login') {
       await login(email, password)
     } else {
       await register(name, email, password)
     }
+  } catch (error) {
+    console.log(error)
   }
+
+  setLoading(false)
+}
 
   const handleForgotPassword = async () => {
     if (!email) {
@@ -83,12 +97,12 @@ const Login = () => {
           onChange={(e) => setPassword(e.target.value)}
         />
 
-        <span
-          className='cursor-pointer'
-          onClick={() => setShowPassword(!showPassword)}
-        >
-          👁️
-        </span>
+       <span
+  className='cursor-pointer'
+  onClick={() => setShowPassword(!showPassword)}
+>
+  {showPassword ? <FaEyeSlash /> : <FaEye />}
+</span>
       </div>
 
       {/* 🔥 CLEAN SECTION */}
@@ -110,9 +124,16 @@ const Login = () => {
 
       </div>
 
-      <button className='bg-black text-white font-light px-8 py-2 mt-4'>
-        {currentState === 'Login' ? 'Sign In' : 'Sign Up'}
-      </button>
+      <button
+  disabled={loading}
+  className='bg-black text-white font-light px-8 py-2 mt-4 disabled:opacity-50'
+>
+  {loading
+    ? "Please Wait..."
+    : currentState === 'Login'
+    ? 'Sign In'
+    : 'Sign Up'}
+</button>
 
       <button
         type="button"

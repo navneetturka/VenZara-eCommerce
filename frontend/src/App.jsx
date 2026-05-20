@@ -6,6 +6,7 @@ import { Routes, Route } from 'react-router-dom'
 import Home from './pages/Home'
 import Collection from './pages/Collection'
 import Contact from './pages/Contact'
+import OrderSuccess from "./pages/OrderSuccess";
 import About from './pages/About'
 import Product from './pages/Product'
 import Cart from './pages/Cart'
@@ -50,6 +51,7 @@ const App = () => {
         <Route path='orders' element={token ? <Orders/> : <Login />} />
         <Route path='/verify' element={<Verify />} />
         <Route path='/reset-password/:token' element={<ResetPassword />} />
+        <Route path="/order-success/:id" element={<OrderSuccess />} />
       </Routes>
 
       {/* ✅ Footer always at bottom */}

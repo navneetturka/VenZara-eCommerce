@@ -19,7 +19,8 @@ const getRazorpay = () =>
 // ─── Cash on Delivery ─────────────────────────────────────────────────────────
 const placeOrder = async (req, res) => {
   try {
-    const { userId, items, amount, address } = req.body;
+   const { items, amount, address } = req.body;
+const userId = req.userId;
 
     const orderData = {
       userId,
@@ -32,12 +33,16 @@ const placeOrder = async (req, res) => {
     };
 
     const newOrder = new orderModel(orderData);
-    await newOrder.save();
+await newOrder.save();
 
-    // Clear user cart after order
-    await userModel.findByIdAndUpdate(userId, { cartData: {} });
+// Clear cart
+await userModel.findByIdAndUpdate(userId, { cartData: {} });
 
-    res.json({ success: true, message: "Order Placed" });
+res.json({
+  success: true,
+  message: "Order Placed",
+  orderId: newOrder._id   // ⭐ ADD THIS
+});
   } catch (error) {
     console.error(error);
     res.json({ success: false, message: error.message });
@@ -206,6 +211,31 @@ const updateStatus = async (req, res) => {
     console.error(error);
     res.json({ success: false, message: error.message });
   }
+};const getOrderById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const order = await orderModel.findById(id);
+
+    if (!order) {
+      return res.json({
+        success: false,
+        message: "Order not found"
+      });
+    }
+
+    res.json({
+      success: true,
+      order
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.json({
+      success: false,
+      message: error.message
+    });
+  }
 };
 
 export {
@@ -217,4 +247,5 @@ export {
   allOrders,
   userOrders,
   updateStatus,
+  getOrderById   
 };

@@ -57,9 +57,9 @@ const registerUser = async (req, res) => {
 // 📩 Send Welcome Email
 try {
   await transporter.sendMail({
-    from: `"NexCart Store 🛒" <${process.env.EMAIL_USER}>`,
+    from: `"VenZara Store 🛒" <${process.env.EMAIL_USER}>`,
     to: email,
-    subject: "Welcome to NexCart Store 🎉",
+    subject: "Welcome to VenZara Store 🎉",
 
     html: `
       <div style="
@@ -94,7 +94,7 @@ try {
                       margin:0;
                       font-size:34px;
                     ">
-                      🛒 NexCart
+                      🛒 VenZara
                     </h1>
 
                     <p style="
@@ -124,7 +124,7 @@ try {
                       line-height:1.7;
                     ">
                       Welcome to 
-                      <strong>NexCart Store</strong> 🎉
+                      <strong>VenZara Store</strong> 🎉
                     </p>
 
                     <p style="
@@ -165,14 +165,14 @@ try {
                       font-size:15px;
                       color:#6b7280;
                     ">
-                      Thank you for choosing NexCart ❤️
+                      Thank you for choosing VenZara ❤️
                     </p>
 
                     <p style="
                       font-size:15px;
                       color:#6b7280;
                     ">
-                      — Team NexCart
+                      — Team VenZara
                     </p>
 
                   </td>
@@ -188,7 +188,7 @@ try {
                       color:#6b7280;
                     ">
 
-                    © 2026 NexCart Store <br/>
+                    © 2026 VenZara Store <br/>
                     All Rights Reserved
 
                   </td>
@@ -270,7 +270,7 @@ const forgotPassword = async (req, res) => {
     const resetLink = `http://localhost:5173/reset-password/${resetToken}`;
 
     await transporter.sendMail({
-      from: `"NexCart 🛒" <${process.env.EMAIL_USER}>`,
+      from: `"VenZara 🛒" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: "Reset Your Password 🔐",
       html: `
@@ -344,7 +344,15 @@ const getUserCart = async (req, res) => {
     const { userId } = req.body;
 
     const userData = await userModel.findById(userId);
-    const cartData = userData.cartData;
+
+if (!userData) {
+  return res.json({
+    success: false,
+    message: "User not found"
+  });
+}
+
+const cartData = userData.cartData;
 
     res.json({ success: true, cartData });
 
@@ -360,7 +368,15 @@ const addToCart = async (req, res) => {
     const { userId, itemId, size } = req.body;
 
     const userData = await userModel.findById(userId);
-    let cartData = userData.cartData;
+
+if (!userData) {
+  return res.json({
+    success: false,
+    message: "User not found"
+  });
+}
+
+let cartData = userData.cartData || {};
 
     if (cartData[itemId]) {
       if (cartData[itemId][size]) {
@@ -389,7 +405,15 @@ const updateCart = async (req, res) => {
     const { userId, itemId, size, quantity } = req.body;
 
     const userData = await userModel.findById(userId);
-    let cartData = userData.cartData;
+
+if (!userData) {
+  return res.json({
+    success: false,
+    message: "User not found"
+  });
+}
+
+let cartData = userData.cartData || {};
 
     cartData[itemId][size] = quantity;
 
@@ -428,9 +452,9 @@ const googleLogin = async (req, res) => {
       console.log("SENDING GOOGLE WELCOME MAIL");
 
       await transporter.sendMail({
-        from: `"NexCart Store 🛒" <${process.env.EMAIL_USER}>`,
+        from: `"VenZara Store 🛒" <${process.env.EMAIL_USER}>`,
         to: email,
-        subject: "Welcome to NexCart 🎉",
+        subject: "Welcome to VenZara 🎉",
 
        html: `
   <div style="
@@ -465,7 +489,7 @@ const googleLogin = async (req, res) => {
                   margin:0;
                   font-size:34px;
                 ">
-                  🛒 NexCart
+                  🛒 VenZara
                 </h1>
 
                 <p style="
@@ -495,7 +519,7 @@ const googleLogin = async (req, res) => {
                   line-height:1.7;
                 ">
                   Welcome to 
-                  <strong>NexCart Store</strong> 🎉
+                  <strong>VenZara Store</strong> 🎉
                 </p>
 
                 <p style="
@@ -536,14 +560,14 @@ const googleLogin = async (req, res) => {
                   font-size:15px;
                   color:#6b7280;
                 ">
-                  Thank you for choosing NexCart ❤️
+                  Thank you for choosing VenZara ❤️
                 </p>
 
                 <p style="
                   font-size:15px;
                   color:#6b7280;
                 ">
-                  — Team NexCart
+                  — Team VenZara
                 </p>
 
               </td>
@@ -559,7 +583,7 @@ const googleLogin = async (req, res) => {
                   color:#6b7280;
                 ">
 
-                © 2026 NexCart Store <br/>
+                © 2026 VenZara Store <br/>
                 All Rights Reserved
 
               </td>

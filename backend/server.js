@@ -7,6 +7,7 @@ import userRouter from "./routes/userRoute.js";
 import productRouter from "./routes/productRoute.js";
 import orderRouter from "./routes/orderRoute.js";
 import reviewRouter from "./routes/reviewRoute.js";
+import newsletterRouter from "./routes/newsletterRoute.js";
 
 // ─── App Setup ────────────────────────────────────────────────────────────────
 const app = express();
@@ -25,7 +26,7 @@ app.use("/api/user", userRouter);
 app.use("/api/product", productRouter);
 app.use("/api/order", orderRouter);
 app.use("/api/review", reviewRouter);
-
+app.use("/api/newsletter", newsletterRouter);
 // ─── Health Check ─────────────────────────────────────────────────────────────
 app.get("/", (req, res) => {
   res.send("🚀 Forever E-Commerce API is running");
