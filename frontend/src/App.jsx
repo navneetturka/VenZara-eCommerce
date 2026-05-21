@@ -19,6 +19,7 @@ import SearchBar from './components/SearchBar'
 import Verify from './pages/Verify'
 import ResetPassword from "./pages/ResetPassword"
 import Profile from './pages/Profile'
+import CategoryCollection from './pages/CategoryCollection'
 
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
@@ -54,6 +55,8 @@ const App = () => {
         <Route path='/verify' element={<Verify />} />
         <Route path='/reset-password/:token' element={<ResetPassword />} />
         <Route path="/order-success/:id" element={<OrderSuccess />} />
+        <Route path='collection/:category' element={token ? <CategoryCollection /> : <Login />}/>
+        
       </Routes>
 
       {/* ✅ Footer always at bottom */}

@@ -1,3 +1,5 @@
+// Product.jsx
+
 import React, { useEffect, useState, useContext } from 'react'
 import { useParams } from 'react-router-dom'
 import axios from 'axios'
@@ -11,7 +13,8 @@ const Product = () => {
 
   const { productId } = useParams()
 
-  const { products, currency, addToCart } = useContext(ShopContext)
+  const { products, currency, addToCart, backendUrl } =
+    useContext(ShopContext)
 
   const [productData, setProductData] = useState(null)
 
@@ -45,10 +48,9 @@ const Product = () => {
 
       setProductData(item)
 
-      setImage(item.image[0])
+      setImage(item.image?.[0] || '')
 
-    }
-    else {
+    } else {
 
       setProductData(null)
 
@@ -62,7 +64,7 @@ const Product = () => {
     try {
 
       const response = await axios.get(
-        `http://localhost:4000/api/review/${productId}`
+        `${backendUrl}/api/review/${productId}`
       )
 
       if (response.data.success) {
@@ -104,7 +106,7 @@ const Product = () => {
       }
 
       await axios.post(
-        "http://localhost:4000/api/review/add",
+        `${backendUrl}/api/review/add`,
         reviewData
       )
 
@@ -130,7 +132,7 @@ const Product = () => {
     try {
 
       await axios.delete(
-        `http://localhost:4000/api/review/delete/${id}`
+        `${backendUrl}/api/review/delete/${id}`
       )
 
       fetchReviews()
@@ -172,7 +174,7 @@ const Product = () => {
       }
 
       await axios.put(
-        `http://localhost:4000/api/review/update/${editingId}`,
+        `${backendUrl}/api/review/update/${editingId}`,
         updatedData
       )
 
@@ -228,13 +230,13 @@ const Product = () => {
           <div className='flex sm:flex-col overflow-x-auto sm:overflow-y-scroll justify-between sm:justify-normal sm:w-[18.7%] w-full'>
 
             {
-              productData.image.map((item, index) => (
+              productData?.image?.map((item, index) => (
 
                 <img
                   onClick={() => setImage(item)}
                   src={item}
                   key={index}
-                  className='w-[24%] sm:w-full sm:mb-3 flex-shrink-0 cursor-pointer'
+                  className='w-[24%] sm:w-full sm:mb-3 flex-shrink-0 cursor-pointer border'
                   alt=""
                 />
 
@@ -248,9 +250,9 @@ const Product = () => {
           <div className='w-full sm:w-[80%]'>
 
             <img
-              className='w-full h-auto'
-              src={image}
-              alt=""
+              className='w-full h-auto object-cover rounded'
+              src={image || productData?.image?.[0]}
+              alt={productData?.name}
             />
 
           </div>
@@ -301,10 +303,10 @@ const Product = () => {
 
             <p>Select Size</p>
 
-            <div className='flex gap-2'>
+            <div className='flex gap-2 flex-wrap'>
 
               {
-                productData.sizes.map((item, index) => (
+                productData?.sizes?.map((item, index) => (
 
                   <button
                     key={index}
@@ -325,13 +327,16 @@ const Product = () => {
           {/* ADD TO CART */}
 
           <div className='flex flex-col sm:flex-row gap-3'>
+
             <button
               onClick={() => addToCart(productData._id, size)}
               className='bg-black text-white px-8 py-3 text-sm active:bg-gray-700'
             >
               ADD TO CART
             </button>
+
             <WishlistButton product={productData} />
+
           </div>
 
           <hr className='mt-8 sm:w-4/5' />
@@ -413,11 +418,13 @@ const Product = () => {
                 <div className='border p-4 rounded'>
 
                   <h3 className='text-lg font-medium mb-4'>
+
                     {
                       editingId
                         ? "Edit Review"
                         : "Write a Review"
                     }
+
                   </h3>
 
                   {/* NAME */}
@@ -546,7 +553,13 @@ const Product = () => {
 
     </div>
 
-  ) : <div className='opacity-0'></div>
+  ) : (
+
+    <div className='text-center py-20 text-gray-500'>
+      Loading Product...
+    </div>
+
+  )
 }
 
 export default Product
