@@ -5,6 +5,7 @@ import axios from "axios";
 
 import { signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from "../firebase";
+import { getStorageJSON, setStorageJSON, removeStorageKey } from "../utils/storage";
 
 
 
@@ -20,7 +21,18 @@ const ShopContextProvider = (props) => {
   // ─── State ────────────────────────────────────────────────────────────────
   const [search, setSearch] = useState("");
   const [showSearch, setShowSearch] = useState(false);
-  const [cartItems, setCartItems] = useState({});
+  const [cartItems, setCartItems] = useState(
+    () => getStorageJSON("cart", {}) || {}
+  );
+  const [wishlist, setWishlist] = useState(
+    () => getStorageJSON("wishlist", []) || []
+  );
+  const [user, setUser] = useState(
+    () => getStorageJSON("user", null)
+  );
+  const [addresses, setAddresses] = useState(
+    () => getStorageJSON("addresses", []) || []
+  );
   const [products, setProducts] = useState([]);
   const [token, setToken] = useState(localStorage.getItem("token") || "");
   const [discount, setDiscount] = useState(0);
@@ -28,6 +40,85 @@ const ShopContextProvider = (props) => {
 const [couponCode, setCouponCode] = useState("");
 
   const navigate = useNavigate();
+
+  const persistUser = (userData) => {
+    setUser(userData);
+    setStorageJSON("user", userData);
+  };
+
+  const productSnapshot = (product) => ({
+    _id: product._id,
+    name: product.name,
+    price: product.price,
+    image: product.image,
+    sizes: product.sizes || [],
+    category: product.category,
+    subCategory: product.subCategory,
+  });
+
+  const isInWishlist = (productId) =>
+    wishlist.some((item) => String(item._id) === String(productId));
+
+  const addToWishlist = (product) => {
+    if (!product?._id) return;
+    if (isInWishlist(product._id)) {
+      toast.info("Already in wishlist");
+      return;
+    }
+    const next = [...wishlist, productSnapshot(product)];
+    setWishlist(next);
+    setStorageJSON("wishlist", next);
+    toast.success("Added to wishlist");
+  };
+
+  const removeFromWishlist = (productId) => {
+    const next = wishlist.filter(
+      (item) => String(item._id) !== String(productId)
+    );
+    setWishlist(next);
+    setStorageJSON("wishlist", next);
+    toast.success("Removed from wishlist");
+  };
+
+  const toggleWishlist = (product) => {
+    if (!product?._id) return;
+    if (isInWishlist(product._id)) {
+      removeFromWishlist(product._id);
+    } else {
+      addToWishlist(product);
+    }
+  };
+
+  const moveWishlistToCart = async (productId) => {
+    const item =
+      wishlist.find((w) => String(w._id) === String(productId)) ||
+      products.find((p) => String(p._id) === String(productId));
+
+    if (!item) {
+      toast.error("Product not found");
+      return;
+    }
+
+    const size = item.sizes?.[0];
+    if (!size) {
+      toast.error("No size available for this product");
+      return;
+    }
+
+    await addToCart(item._id, size);
+    removeFromWishlist(item._id);
+  };
+
+  const updateUserProfile = (updates) => {
+    const next = { ...(user || {}), ...updates };
+    persistUser(next);
+    toast.success("Profile updated");
+  };
+
+  const saveAddresses = (nextAddresses) => {
+    setAddresses(nextAddresses);
+    setStorageJSON("addresses", nextAddresses);
+  };
 
   // ─── Fetch Products from Backend ──────────────────────────────────────────
   const fetchProducts = async () => {
@@ -150,6 +241,12 @@ const [couponCode, setCouponCode] = useState("");
         const userToken = response.data.token;
         setToken(userToken);
         localStorage.setItem("token", userToken);
+        const existingUser = getStorageJSON("user", null);
+        persistUser({
+          name: existingUser?.name || email.split("@")[0],
+          email,
+          phone: existingUser?.phone || "",
+        });
         await getUserCart(userToken);
         navigate("/");
         toast.success("Logged in successfully!");
@@ -174,6 +271,7 @@ const [couponCode, setCouponCode] = useState("");
         const userToken = response.data.token;
         setToken(userToken);
         localStorage.setItem("token", userToken);
+        persistUser({ name, email, phone: "" });
         navigate("/");
         toast.success("Account created!");
       } else {
@@ -201,16 +299,20 @@ const googleLogin = async () => {
       }
     );
 
-   if (response.data.success) {
-  const userToken = response.data.token;
-
-  setToken(userToken);
-  localStorage.setItem("token", userToken);
-
-  // ⭐ ADD THIS
-  const userId = response.data.userId;
-  localStorage.setItem("userId", userId);
-}
+    if (response.data.success) {
+      const userToken = response.data.token;
+      setToken(userToken);
+      localStorage.setItem("token", userToken);
+      persistUser({
+        name: user.displayName || "",
+        email: user.email || "",
+        phone: "",
+      });
+      const userId = response.data.userId;
+      if (userId) localStorage.setItem("userId", userId);
+      navigate("/");
+      toast.success("Google Login Successful");
+    }
 
   } catch (error) {
     console.log(error);
@@ -224,7 +326,11 @@ const googleLogin = async () => {
   const logout = () => {
     setToken("");
     localStorage.removeItem("token");
+    localStorage.removeItem("userId");
+    removeStorageKey("user");
+    setUser(null);
     setCartItems({});
+    setStorageJSON("cart", {});
     navigate("/login");
     toast.success("Logged out");
   };
@@ -241,6 +347,14 @@ const googleLogin = async () => {
     }
   }, [token]);
 
+  useEffect(() => {
+    setStorageJSON("cart", cartItems);
+  }, [cartItems]);
+
+  useEffect(() => {
+    setStorageJSON("wishlist", wishlist);
+  }, [wishlist]);
+
   // ─── Context Value ────────────────────────────────────────────────────────
   const value = {
     // Data
@@ -250,6 +364,9 @@ const googleLogin = async () => {
     backendUrl,
     token,
     cartItems,
+    wishlist,
+    user,
+    addresses,
 
     // Cart
     addToCart,
@@ -257,6 +374,13 @@ const googleLogin = async () => {
     getCartCount,
     getCartAmount,
     setCartItems,
+    isInWishlist,
+    addToWishlist,
+    removeFromWishlist,
+    toggleWishlist,
+    moveWishlistToCart,
+    updateUserProfile,
+    saveAddresses,
 
     // Auth
     login,

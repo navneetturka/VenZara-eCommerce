@@ -1,16 +1,34 @@
-import React,{ useContext} from 'react';
-import { ShopContext } from '../context/ShopContext'
-import { Link } from 'react-router-dom';
-const ProductItem = ({id,image,name,price}) => {
-    const{currency}=useContext(ShopContext);
-    return (
-        <Link className='text-gray-700 cursor-pointer' to={`/product/${id}`}>
-            <div className='overflow-hidden'>
-                <img className='hover:scale-110 transition ease-in-out' src={image[0]} alt=""/>
-            </div>
-        <p className='pt-3 pb-1 text-sm'>{name}</p>
-        <p className='text-sm font-medium'>{currency}{price}</p>
-        </Link>
-    )
-}
-export default ProductItem
+import React, { useContext } from "react";
+import { ShopContext } from "../context/ShopContext";
+import { Link } from "react-router-dom";
+import WishlistButton from "./WishlistButton";
+
+const ProductItem = ({ id, image, name, price, sizes }) => {
+  const { currency } = useContext(ShopContext);
+
+  const product = { _id: id, name, price, image, sizes: sizes || [] };
+
+  return (
+    <div className="text-gray-700">
+      <Link className="cursor-pointer block" to={`/product/${id}`}>
+        <div className="overflow-hidden">
+          <img
+            className="hover:scale-110 transition ease-in-out w-full"
+            src={image[0]}
+            alt={name}
+          />
+        </div>
+        <p className="pt-3 pb-1 text-sm">{name}</p>
+        <p className="text-sm font-medium">
+          {currency}
+          {price}
+        </p>
+      </Link>
+      <div className="mt-2">
+        <WishlistButton product={product} className="w-full" />
+      </div>
+    </div>
+  );
+};
+
+export default ProductItem;

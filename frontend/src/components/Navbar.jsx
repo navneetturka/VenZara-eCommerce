@@ -88,6 +88,13 @@ const Navbar = () => {
                                 </p>
 
                                 <p
+                                    onClick={() => navigate('/profile?section=wishlist')}
+                                    className='cursor-pointer hover:text-black'
+                                >
+                                    Wishlist
+                                </p>
+
+                                <p
                                     onClick={logout}
                                     className='cursor-pointer hover:text-red-500'
                                 >
@@ -150,6 +157,10 @@ const Navbar = () => {
 
                             <NavLink onClick={() => setVisible(false)} to='/orders' className='py-2 pl-6 border'>
                                 MY ORDERS
+                            </NavLink>
+
+                            <NavLink onClick={() => setVisible(false)} to='/profile?section=wishlist' className='py-2 pl-6 border'>
+                                WISHLIST
                             </NavLink>
                         </>
                     )}

@@ -5,6 +5,7 @@ import axios from 'axios'
 import { assets } from '../assets/assets'
 import { ShopContext } from '../context/ShopContext'
 import RelatedProducts from '../components/RelatedProducts'
+import WishlistButton from '../components/WishlistButton'
 
 const Product = () => {
 
@@ -323,12 +324,15 @@ const Product = () => {
 
           {/* ADD TO CART */}
 
-          <button
-            onClick={() => addToCart(productData._id, size)}
-            className='bg-black text-white px-8 py-3 text-sm active:bg-gray-700'
-          >
-            ADD TO CART
-          </button>
+          <div className='flex flex-col sm:flex-row gap-3'>
+            <button
+              onClick={() => addToCart(productData._id, size)}
+              className='bg-black text-white px-8 py-3 text-sm active:bg-gray-700'
+            >
+              ADD TO CART
+            </button>
+            <WishlistButton product={productData} />
+          </div>
 
           <hr className='mt-8 sm:w-4/5' />
 

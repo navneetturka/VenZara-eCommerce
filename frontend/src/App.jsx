@@ -18,6 +18,7 @@ import Footer from './components/Footer'
 import SearchBar from './components/SearchBar'
 import Verify from './pages/Verify'
 import ResetPassword from "./pages/ResetPassword"
+import Profile from './pages/Profile'
 
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
@@ -49,6 +50,7 @@ const App = () => {
         <Route path='login' element={<Login/>} />
         <Route path='place-order' element={token ? <PlaceOrder/> : <Login />} />
         <Route path='orders' element={token ? <Orders/> : <Login />} />
+        <Route path='/profile' element={token ? <Profile /> : <Login />} />
         <Route path='/verify' element={<Verify />} />
         <Route path='/reset-password/:token' element={<ResetPassword />} />
         <Route path="/order-success/:id" element={<OrderSuccess />} />
