@@ -16,20 +16,35 @@ const getRazorpay = () =>
     key_secret: process.env.RAZORPAY_KEY_SECRET,
   });
 
+const normalizeOrderItems = (items = []) =>
+  items.map((item) => ({
+    productId: String(item._id || item.productId || ""),
+    name: item.name,
+    image: Array.isArray(item.image) ? item.image : item.image ? [item.image] : [],
+    price: Number(item.price) || 0,
+    quantity: Number(item.quantity) || 1,
+    size: item.size || "",
+  }));
+
 // ─── Cash on Delivery ─────────────────────────────────────────────────────────
 const placeOrder = async (req, res) => {
   try {
-   const { items, amount, address } = req.body;
-const userId = req.userId;
+    const { items, amount, address } = req.body;
+    const userId = req.userId;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Not authorized" });
+    }
 
     const orderData = {
-      userId,
-      items,
+      userId: String(userId),
+      items: normalizeOrderItems(items),
       address,
       amount,
       paymentMethod: "COD",
       payment: false,
       date: Date.now(),
+      status: "Order Placed",
     };
 
     const newOrder = new orderModel(orderData);
@@ -52,17 +67,19 @@ res.json({
 // ─── Stripe ───────────────────────────────────────────────────────────────────
 const placeOrderStripe = async (req, res) => {
   try {
-    const { userId, items, amount, address } = req.body;
+    const userId = req.userId;
+    const { items, amount, address } = req.body;
     const { origin } = req.headers;
 
     const orderData = {
-      userId,
-      items,
+      userId: String(userId),
+      items: normalizeOrderItems(items),
       address,
       amount,
       paymentMethod: "Stripe",
       payment: false,
       date: Date.now(),
+      status: "Order Placed",
     };
 
     const newOrder = new orderModel(orderData);
@@ -124,16 +141,18 @@ const verifyStripe = async (req, res) => {
 // ─── Razorpay ─────────────────────────────────────────────────────────────────
 const placeOrderRazorpay = async (req, res) => {
   try {
-    const { userId, items, amount, address } = req.body;
+    const userId = req.userId;
+    const { items, amount, address } = req.body;
 
     const orderData = {
-      userId,
-      items,
+      userId: String(userId),
+      items: normalizeOrderItems(items),
       address,
       amount,
       paymentMethod: "Razorpay",
       payment: false,
       date: Date.now(),
+      status: "Order Placed",
     };
 
     const newOrder = new orderModel(orderData);
@@ -192,8 +211,13 @@ const allOrders = async (req, res) => {
 // ─── User Orders ──────────────────────────────────────────────────────────────
 const userOrders = async (req, res) => {
   try {
-    const { userId } = req.body;
-    const orders = await orderModel.find({ userId });
+    const userId = req.userId;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Not authorized" });
+    }
+    const orders = await orderModel
+      .find({ userId: String(userId) })
+      .sort({ date: -1 });
     res.json({ success: true, orders });
   } catch (error) {
     console.error(error);
@@ -211,30 +235,90 @@ const updateStatus = async (req, res) => {
     console.error(error);
     res.json({ success: false, message: error.message });
   }
-};const getOrderById = async (req, res) => {
+};
+
+const getOrderById = async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = req.userId;
 
     const order = await orderModel.findById(id);
 
     if (!order) {
-      return res.json({
+      return res.status(404).json({
         success: false,
-        message: "Order not found"
+        message: "Order not found",
+      });
+    }
+
+    if (userId && String(order.userId) !== String(userId)) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized to view this order",
       });
     }
 
     res.json({
       success: true,
-      order
+      order,
     });
-
   } catch (error) {
     console.error(error);
-    res.json({
+    res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
+  }
+};
+
+// ─── User: cancel order ───────────────────────────────────────────────────────
+const cancelOrderByUser = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { id } = req.params;
+
+    const order = await orderModel.findById(id);
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Order not found" });
+    }
+    if (String(order.userId) !== String(userId)) {
+      return res.status(403).json({ success: false, message: "Not authorized" });
+    }
+    if (order.status === "Delivered") {
+      return res.status(400).json({
+        success: false,
+        message: "Delivered orders cannot be cancelled",
+      });
+    }
+    if (order.status === "Cancelled") {
+      return res.status(400).json({
+        success: false,
+        message: "Order is already cancelled",
+      });
+    }
+
+    await orderModel.findByIdAndUpdate(id, { status: "Cancelled" });
+    res.json({ success: true, message: "Order cancelled" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ─── User: patch status (cancel only from client) ─────────────────────────────
+const patchOrderByUser = async (req, res) => {
+  try {
+    const { status } = req.body;
+    if (status === "Cancelled") {
+      return cancelOrderByUser(req, res);
+    }
+    return res.status(400).json({
+      success: false,
+      message: "Only cancellation is allowed",
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -247,5 +331,7 @@ export {
   allOrders,
   userOrders,
   updateStatus,
-  getOrderById   
+  getOrderById,
+  cancelOrderByUser,
+  patchOrderByUser,
 };

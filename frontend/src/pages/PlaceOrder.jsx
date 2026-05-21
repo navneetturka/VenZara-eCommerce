@@ -166,7 +166,6 @@ const PlaceOrder = () => {
           if (productData) {
             productData.size = size;
             productData.quantity = cartItems[itemId][size];
-            delete productData.image;
             orderItems.push(productData);
           }
         }

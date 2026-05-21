@@ -19,7 +19,9 @@ const OrderSuccess = () => {
           }
         );
 
-        setOrder(res.data.order);
+        if (res.data.success) {
+          setOrder(res.data.order);
+        }
       } catch (err) {
         console.log(err);
       }

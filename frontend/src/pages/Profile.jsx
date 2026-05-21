@@ -72,11 +72,9 @@ const Profile = () => {
     if (!token) return;
     setOrdersLoading(true);
     try {
-      const response = await axios.post(
-        `${backendUrl}/api/order/userorders`,
-        {},
-        { headers: { token } }
-      );
+      const response = await axios.get(`${backendUrl}/api/order/`, {
+        headers: { token },
+      });
       if (response.data.success) {
         const orders = response.data.orders || [];
         setOrderData(orders.reverse());
