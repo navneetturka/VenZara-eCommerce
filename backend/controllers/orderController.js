@@ -2,6 +2,14 @@ import orderModel from "../models/orderModel.js";
 import userModel from "../models/userModel.js";
 import Stripe from "stripe";
 import Razorpay from "razorpay";
+import {
+  STATUS_FLOW,
+  isAllowedStatus,
+  canTransition,
+  getStatusIndex,
+} from "./orderStatusFlow.js";
+
+
 
 // ─── Payment gateway instances ────────────────────────────────────────────────
 const currency = "inr";
@@ -228,14 +236,83 @@ const userOrders = async (req, res) => {
 // ─── Update Order Status (Admin) ──────────────────────────────────────────────
 const updateStatus = async (req, res) => {
   try {
-    const { orderId, status } = req.body;
-    await orderModel.findByIdAndUpdate(orderId, { status });
-    res.json({ success: true, message: "Status Updated" });
+    // Support both legacy body payload and new PUT param payload
+    const orderId = req.body?.orderId || req.params?.id;
+    let toStatus = req.body?.status;
+
+    console.log("[updateStatus] request", {
+      orderId,
+      rawToStatus: toStatus,
+      routeParamId: req.params?.id,
+      bodyOrderId: req.body?.orderId,
+    });
+
+    if (!orderId) {
+      return res.status(400).json({ success: false, message: "orderId is required" });
+    }
+    if (!toStatus) {
+      return res.status(400).json({ success: false, message: "status is required" });
+    }
+
+    // Normalize status value (trim + match case-insensitively)
+    toStatus = String(toStatus).trim();
+    const matched = STATUS_FLOW.find((s) => s.toLowerCase() === toStatus.toLowerCase());
+    if (matched) toStatus = matched;
+
+    if (!isAllowedStatus(toStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid status. Allowed: ${STATUS_FLOW.join(", ")}`,
+        received: String(req.body?.status ?? ""),
+      });
+    }
+
+    const order = await orderModel.findById(orderId);
+    console.log("[updateStatus] current order status", {
+      orderId,
+      currentStatus: order?.status,
+      toStatus,
+      fromIdx: order?.status ? getStatusIndex(order.status) : null,
+      toIdx: getStatusIndex(toStatus),
+    });
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Order not found" });
+    }
+
+    // forward-only enforcement
+    const ok = canTransition({ fromStatus: order.status, toStatus });
+    if (!ok) {
+      // Admin override via optional header
+      const override = req.headers["x-admin-override"] === "true";
+      if (!override) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid status transition: ${order.status} -> ${toStatus}`,
+        });
+      }
+    }
+
+
+    const updated = await orderModel.findByIdAndUpdate(
+      orderId,
+      { status: toStatus },
+      { new: true }
+    );
+
+    console.log("[updateStatus] updated", {
+      orderId,
+      status: updated?.status,
+    });
+
+    return res.json({ success: true, message: "Status Updated", order: updated });
   } catch (error) {
-    console.error(error);
-    res.json({ success: false, message: error.message });
+    console.error("[updateStatus] error", error);
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
+
+
 
 const getOrderById = async (req, res) => {
   try {

@@ -27,7 +27,11 @@ orderRouter.post("/:id/cancel", userAuth, cancelOrderByUser);
 
 // ─── Admin ────────────────────────────────────────────────────────────────────
 orderRouter.post("/list", adminAuth, allOrders);
+// Legacy admin endpoint (temporary fallback)
 orderRouter.post("/status", adminAuth, updateStatus);
+// New: PUT /api/orders/:id/status (end-to-end tracking)
+orderRouter.put("/:id/status", adminAuth, updateStatus);
+
 
 // ─── Checkout ─────────────────────────────────────────────────────────────────
 orderRouter.post("/place", userAuth, placeOrder);

@@ -12,7 +12,14 @@ const FILTERS = [
   { id: "cancelled", label: "Cancelled" },
 ];
 
-const TRACK_STEPS = ["Ordered", "Shipped", "Out for Delivery", "Delivered"];
+const TRACK_STEPS = [
+  "Processing",
+  "Packed",
+  "Shipped",
+  "Out for Delivery",
+  "Delivered",
+];
+
 
 const formatOrderId = (id) => {
   if (!id) return "—";
@@ -24,28 +31,42 @@ const getStatusLabel = (status) => {
   if (!status) return "In Progress";
   if (status === "Cancelled") return "Cancelled";
   if (status === "Delivered") return "Delivered";
-  if (
-    status === "Order Placed" ||
-    status === "Processing" ||
-    status === "Packing"
-  ) {
-    return "In Progress";
-  }
+
+  // Keep badge label aligned to backend flow labels
+  if (TRACK_STEPS.includes(status)) return status;
+
+  // Backward compatibility for legacy statuses
+  if (status === "Order Placed") return "Processing";
+  if (status === "Packing") return "Packed";
+  if (status === "Out for delivery") return "Out for Delivery";
+
   return status;
 };
 
+
 const getStatusBadgeClass = (status) => {
+  if (status === "Processing") return "bg-amber-50 text-amber-800 border-amber-200";
+  if (status === "Packed") return "bg-amber-50 text-amber-800 border-amber-200";
+  if (status === "Shipped") return "bg-blue-50 text-blue-700 border-blue-200";
+  if (status === "Out for Delivery") return "bg-gray-50 text-gray-700 border-gray-200";
   if (status === "Delivered") return "bg-green-50 text-green-700 border-green-200";
   if (status === "Cancelled") return "bg-red-50 text-red-700 border-red-200";
   return "bg-amber-50 text-amber-800 border-amber-200";
 };
 
+
 const getTrackIndex = (status) => {
-  if (status === "Delivered") return 3;
-  if (status === "Out for delivery" || status === "Out for Delivery") return 2;
-  if (status === "Shipped") return 1;
-  return 0;
+  // Map backend flow to step indexes 0..4
+  if (!status) return 0;
+  if (status === "Cancelled") return 0;
+
+  const normalized =
+    status === "Out for delivery" ? "Out for Delivery" : status;
+
+  const idx = TRACK_STEPS.indexOf(normalized);
+  return idx === -1 ? 0 : idx;
 };
+
 
 const itemCount = (order) =>
   (order.items || []).reduce((sum, i) => sum + (Number(i.quantity) || 1), 0);
@@ -196,6 +217,8 @@ const Orders = () => {
   const trackIndex = selectedOrder
     ? getTrackIndex(selectedOrder.status)
     : 0;
+
+
 
   return (
     <ProfileLayout active="orders">

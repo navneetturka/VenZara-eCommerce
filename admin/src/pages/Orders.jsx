@@ -5,12 +5,14 @@ import { toast } from "react-toastify";
 const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
 
 const STATUS_OPTIONS = [
-  "Order Placed",
-  "Packing",
+  "Processing",
+  "Packed",
   "Shipped",
-  "Out for delivery",
+  "Out for Delivery",
   "Delivered",
 ];
+
+
 
 const formatItems = (items) => {
   if (!Array.isArray(items)) return "";
@@ -54,23 +56,56 @@ const Orders = () => {
   const updateStatus = async (orderId, status) => {
     const token = localStorage.getItem("adminToken");
     if (!token) return;
+
+    const nextStatus = status;
+
     try {
-      const { data } = await axios.post(
+      console.log("[admin updateStatus] click", { orderId, nextStatus });
+
+      // New API (PUT /api/orders/:id/status)
+      const putRes = await axios.put(
+        `${backendUrl}/api/orders/${orderId}/status`,
+        { status: nextStatus },
+        {
+          headers: {
+            token,
+            "x-admin-override": "true",
+          },
+        }
+      );
+
+
+      console.log("[admin updateStatus] putRes", putRes?.data);
+
+      if (putRes?.data?.success) {
+        toast.success(putRes.data.message || "Updated");
+        await load();
+        return;
+      }
+
+      // Temporary fallback (legacy POST /api/order/status)
+      const postRes = await axios.post(
         `${backendUrl}/api/order/status`,
-        { orderId, status },
+        { orderId, status: nextStatus },
         { headers: { token } }
       );
-      if (data.success) {
-        toast.success(data.message || "Updated");
-        load();
-      } else {
-        toast.error(data.message || "Update failed");
+      console.log("[admin updateStatus] postRes", postRes?.data);
+
+      if (postRes?.data?.success) {
+        toast.success(postRes.data.message || "Updated");
+        await load();
+        return;
       }
+
+      toast.error(postRes?.data?.message || putRes?.data?.message || "Update failed");
     } catch (e) {
-      console.error(e);
-      toast.error("Update failed");
+      console.error("[admin updateStatus] error", e);
+      toast.error(e?.response?.data?.message || "Update failed");
     }
   };
+
+
+
 
   return (
     <div className="mx-auto max-w-5xl">
