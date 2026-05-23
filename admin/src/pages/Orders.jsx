@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
+import { formatPrice } from "../constants/currency";
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
 
@@ -163,7 +164,7 @@ const Orders = () => {
                 </div>
                 <div className="flex flex-row items-center justify-between gap-4 sm:flex-col sm:justify-center">
                   <p className="text-xl font-bold text-gray-900">
-                    ${order.amount}
+                    {formatPrice(order.amount)}
                   </p>
                   <select
                     value={order.status || "Order Placed"}

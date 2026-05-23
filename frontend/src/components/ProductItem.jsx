@@ -2,6 +2,7 @@ import React, { useContext } from "react";
 import { ShopContext } from "../context/ShopContext";
 import { Link } from "react-router-dom";
 import WishlistButton from "./WishlistButton";
+import { getProductImageUrl } from "../utils/productImage";
 
 const ProductItem = ({ id, image, name, price, sizes }) => {
   const { currency } = useContext(ShopContext);
@@ -13,9 +14,10 @@ const ProductItem = ({ id, image, name, price, sizes }) => {
       <Link className="cursor-pointer block" to={`/product/${id}`}>
         <div className="overflow-hidden">
           <img
-            className="hover:scale-110 transition ease-in-out w-full"
-            src={image[0]}
+            className="hover:scale-110 transition ease-in-out w-full aspect-[4/5] object-cover"
+            src={getProductImageUrl(image)}
             alt={name}
+            loading="lazy"
           />
         </div>
         <p className="pt-3 pb-1 text-sm">{name}</p>

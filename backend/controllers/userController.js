@@ -16,7 +16,7 @@ const transporter = nodemailer.createTransport({
 
 // Helper: create JWT token for user
 const createToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET);
+  return jwt.sign({ id: String(id) }, process.env.JWT_SECRET);
 };
 
 // ─── Register ─────────────────────────────────────────────────────────────────
@@ -341,7 +341,14 @@ const adminLogin = async (req, res) => {
 // ─── Get Cart ─────────────────────────────────────────────────────────────────
 const getUserCart = async (req, res) => {
   try {
-    const { userId } = req.body;
+    const userId = req.userId;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized. Please login again.",
+      });
+    }
 
     const userData = await userModel.findById(userId);
 
@@ -365,7 +372,8 @@ const cartData = userData.cartData;
 // ─── Add To Cart ──────────────────────────────────────────────────────────────
 const addToCart = async (req, res) => {
   try {
-    const { userId, itemId, size } = req.body;
+    const userId = req.userId;
+    const { itemId, size } = req.body;
 
     const userData = await userModel.findById(userId);
 
@@ -402,7 +410,8 @@ let cartData = userData.cartData || {};
 // ─── Update Cart ──────────────────────────────────────────────────────────────
 const updateCart = async (req, res) => {
   try {
-    const { userId, itemId, size, quantity } = req.body;
+    const userId = req.userId;
+    const { itemId, size, quantity } = req.body;
 
     const userData = await userModel.findById(userId);
 
@@ -451,6 +460,7 @@ const googleLogin = async (req, res) => {
 
       console.log("SENDING GOOGLE WELCOME MAIL");
 
+      try {
       await transporter.sendMail({
         from: `"VenZara Store 🛒" <${process.env.EMAIL_USER}>`,
         to: email,
@@ -600,6 +610,9 @@ const googleLogin = async (req, res) => {
       });
 
       console.log("GOOGLE MAIL SENT");
+      } catch (mailError) {
+        console.error("Google welcome email failed:", mailError.message);
+      }
     }
 
     // Generate JWT

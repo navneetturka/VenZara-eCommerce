@@ -38,66 +38,104 @@ const parseBestseller = (raw) => {
   return false;
 };
 
+const parseImageSlots = (raw) => {
+  if (!raw) return [];
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return Array.isArray(raw) ? raw : [];
+};
+
+const validateProductFields = (body) => {
+  const {
+    name,
+    description,
+    price,
+    category,
+    subCategory,
+    sizes: sizesRaw,
+    bestseller: bestsellerRaw,
+  } = body;
+
+  const nameTrim = (name || "").trim();
+  const descriptionTrim = (description || "").trim();
+  const categoryTrim = (category || "").trim();
+  const subCategoryTrim = (subCategory || "").trim();
+
+  if (!nameTrim || nameTrim.length < 2) {
+    return { error: "Product name is required (min 2 characters)." };
+  }
+
+  if (!descriptionTrim || descriptionTrim.length < 5) {
+    return { error: "Description is required (min 5 characters)." };
+  }
+
+  const priceNum = Number(price);
+  if (!Number.isFinite(priceNum) || priceNum <= 0) {
+    return { error: "Valid price greater than 0 is required." };
+  }
+
+  if (!ALLOWED_CATEGORIES.includes(categoryTrim)) {
+    return {
+      error: `Category must be one of: ${ALLOWED_CATEGORIES.join(", ")}.`,
+    };
+  }
+
+  if (!ALLOWED_SUBCATEGORIES.includes(subCategoryTrim)) {
+    return {
+      error: `Sub category must be one of: ${ALLOWED_SUBCATEGORIES.join(", ")}.`,
+    };
+  }
+
+  const sizes = parseSizes(sizesRaw);
+  if (sizes.length === 0) {
+    return { error: "Select at least one product size." };
+  }
+
+  return {
+    data: {
+      name: nameTrim,
+      description: descriptionTrim,
+      category: categoryTrim,
+      subCategory: subCategoryTrim,
+      price: priceNum,
+      sizes,
+      bestseller: parseBestseller(bestsellerRaw),
+    },
+  };
+};
+
+const buildImagesFromSlots = async (imageSlots, files) => {
+  const images = [];
+
+  for (const slot of imageSlots) {
+    if (slot.type === "existing" && slot.url) {
+      images.push(slot.url);
+      continue;
+    }
+
+    if (slot.type === "new" && slot.index) {
+      const file = files?.[`image${slot.index}`]?.[0];
+      if (file) {
+        images.push(await uploadBufferToCloudinary(file.buffer));
+      }
+    }
+  }
+
+  return images;
+};
+
 // ─── Add Product ──────────────────────────────────────────────────────────────
 const addProduct = async (req, res) => {
   try {
-    const {
-      name,
-      description,
-      price,
-      category,
-      subCategory,
-      sizes: sizesRaw,
-      bestseller: bestsellerRaw,
-    } = req.body;
-
-    const nameTrim = (name || "").trim();
-    const descriptionTrim = (description || "").trim();
-    const categoryTrim = (category || "").trim();
-    const subCategoryTrim = (subCategory || "").trim();
-
-    if (!nameTrim || nameTrim.length < 2) {
-      return res.status(400).json({
-        success: false,
-        message: "Product name is required (min 2 characters).",
-      });
-    }
-
-    if (!descriptionTrim || descriptionTrim.length < 5) {
-      return res.status(400).json({
-        success: false,
-        message: "Description is required (min 5 characters).",
-      });
-    }
-
-    const priceNum = Number(price);
-    if (!Number.isFinite(priceNum) || priceNum <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Valid price greater than 0 is required.",
-      });
-    }
-
-    if (!ALLOWED_CATEGORIES.includes(categoryTrim)) {
-      return res.status(400).json({
-        success: false,
-        message: `Category must be one of: ${ALLOWED_CATEGORIES.join(", ")}.`,
-      });
-    }
-
-    if (!ALLOWED_SUBCATEGORIES.includes(subCategoryTrim)) {
-      return res.status(400).json({
-        success: false,
-        message: `Sub category must be one of: ${ALLOWED_SUBCATEGORIES.join(", ")}.`,
-      });
-    }
-
-    const sizes = parseSizes(sizesRaw);
-    if (sizes.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Select at least one product size.",
-      });
+    const validated = validateProductFields(req.body);
+    if (validated.error) {
+      return res.status(400).json({ success: false, message: validated.error });
     }
 
     const image1 = req.files?.image1?.[0];
@@ -119,13 +157,7 @@ const addProduct = async (req, res) => {
     );
 
     const productData = {
-      name: nameTrim,
-      description: descriptionTrim,
-      category: categoryTrim,
-      subCategory: subCategoryTrim,
-      price: priceNum,
-      sizes,
-      bestseller: parseBestseller(bestsellerRaw),
+      ...validated.data,
       image: imagesUrl,
       date: Date.now(),
     };
@@ -180,6 +212,73 @@ const removeProduct = async (req, res) => {
   }
 };
 
+// ─── Update Product ───────────────────────────────────────────────────────────
+const updateProduct = async (req, res) => {
+  try {
+    const { id } = req.body;
+
+    if (!id || !mongoose.isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid product id is required.",
+      });
+    }
+
+    const product = await productModel.findById(id);
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found.",
+      });
+    }
+
+    const validated = validateProductFields(req.body);
+    if (validated.error) {
+      return res.status(400).json({ success: false, message: validated.error });
+    }
+
+    let imageSlots = parseImageSlots(req.body.imageSlots);
+    const files = req.files || {};
+
+    if (imageSlots.length === 0) {
+      const hasNewFiles = Object.keys(files).length > 0;
+      if (!hasNewFiles && Array.isArray(product.image) && product.image.length > 0) {
+        imageSlots = product.image.map((url) => ({ type: "existing", url }));
+      }
+    }
+
+    const imagesUrl = await buildImagesFromSlots(imageSlots, files);
+
+    if (imagesUrl.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "At least one product image is required.",
+      });
+    }
+
+    await productModel.findByIdAndUpdate(id, {
+      ...validated.data,
+      image: imagesUrl,
+    });
+
+    return res.json({ success: true, message: "Product Updated" });
+  } catch (error) {
+    console.error(error);
+    const statusCode = error?.http_code || error?.status;
+    if (statusCode === 403) {
+      return res.status(500).json({
+        success: false,
+        message:
+          "Cloudinary upload failed (403). Check CLOUDINARY_NAME / CLOUDINARY_API_KEY / CLOUDINARY_SECRET_KEY in backend .env and restart server.",
+      });
+    }
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Failed to update product.",
+    });
+  }
+};
+
 // ─── List All Products ────────────────────────────────────────────────────────
 const listProducts = async (req, res) => {
   try {
@@ -223,4 +322,4 @@ const singleProduct = async (req, res) => {
   }
 };
 
-export { addProduct, removeProduct, listProducts, singleProduct };
+export { addProduct, removeProduct, updateProduct, listProducts, singleProduct };

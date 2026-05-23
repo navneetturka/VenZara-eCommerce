@@ -6,6 +6,7 @@ import AdminShell from "./components/AdminShell.jsx";
 import Login from "./pages/Login.jsx";
 import Add from "./pages/Add.jsx";
 import List from "./pages/List.jsx";
+import Edit from "./pages/Edit.jsx";
 import Orders from "./pages/Orders.jsx";
 
 const PrivateRoute = ({ children }) => {
@@ -32,6 +33,14 @@ const App = () => (
         element={
           <PrivateRoute>
             <List />
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/edit/:id"
+        element={
+          <PrivateRoute>
+            <Edit />
           </PrivateRoute>
         }
       />

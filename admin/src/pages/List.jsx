@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import axios from "axios";
 import { toast } from "react-toastify";
+import { formatPrice } from "../constants/currency";
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
 
@@ -92,16 +94,24 @@ const List = () => {
                     </td>
                     <td className="px-4 py-3 text-gray-900">{p.name}</td>
                     <td className="px-4 py-3 text-gray-700">{p.category}</td>
-                    <td className="px-4 py-3 text-gray-900">${p.price}</td>
+                    <td className="px-4 py-3 text-gray-900">{formatPrice(p.price)}</td>
                     <td className="px-4 py-3">
-                      <button
-                        type="button"
-                        onClick={() => remove(p._id)}
-                        className="text-lg font-light text-gray-600 hover:text-red-600"
-                        aria-label="Delete product"
-                      >
-                        ×
-                      </button>
+                      <div className="flex items-center gap-3">
+                        <Link
+                          to={`/edit/${p._id}`}
+                          className="text-sm font-medium text-blue-600 hover:text-blue-800"
+                        >
+                          Edit
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => remove(p._id)}
+                          className="text-lg font-light text-gray-600 hover:text-red-600"
+                          aria-label="Delete product"
+                        >
+                          ×
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))

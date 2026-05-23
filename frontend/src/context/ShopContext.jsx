@@ -1,7 +1,9 @@
 import { createContext, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import API from "../utils/axios";
+import { CURRENCY_SYMBOL } from "../constants/currency";
+
 
 import { signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from "../firebase";
@@ -15,7 +17,7 @@ const ShopContextProvider = (props) => {
 
   // ─── Config ───────────────────────────────────────────────────────────────
   const backendUrl = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
-  const currency = "₹";
+  const currency = CURRENCY_SYMBOL;
   const delivery_fee = 100;
 
   // ─── State ────────────────────────────────────────────────────────────────
@@ -123,7 +125,7 @@ const [couponCode, setCouponCode] = useState("");
   // ─── Fetch Products from Backend ──────────────────────────────────────────
   const fetchProducts = async () => {
     try {
-      const response = await axios.get(`${backendUrl}/api/product/list`);
+      const response = await API.get(`/product/list`);
       if (response.data.success) {
         setProducts(response.data.products);
       } else {
@@ -135,35 +137,23 @@ const [couponCode, setCouponCode] = useState("");
     }
   };
 
+
   // ─── Cart: Add ────────────────────────────────────────────────────────────
   const addToCart = async (itemId, size) => {
-    if (!size) {
-      toast.error("Select Product size");
-      return;
-    }
-
-    let cartData = structuredClone(cartItems);
-    if (cartData[itemId]) {
-      cartData[itemId][size] = (cartData[itemId][size] || 0) + 1;
-    } else {
-      cartData[itemId] = { [size]: 1 };
-    }
-    setCartItems(cartData);
-
-    // Sync to backend if logged in
-    if (token) {
-      try {
-        await axios.post(
-          `${backendUrl}/api/user/addtocart`,
-          { itemId, size },
-          { headers: { token } }
-        );
-      } catch (error) {
-        console.error(error);
-        toast.error("Failed to sync cart");
+    try {
+      const response = await API.post("/user/addtocart", { itemId, size });
+      if (response.data.success) {
+        await getUserCart();
+        toast.success("Added to cart");
+      } else {
+        toast.error(response.data.message || "Failed to add items to cart");
       }
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to add items to cart");
     }
   };
+
 
   // ─── Cart: Update Quantity ────────────────────────────────────────────────
   const updateQuantity = async (itemId, size, quantity) => {
@@ -173,11 +163,11 @@ const [couponCode, setCouponCode] = useState("");
 
     if (token) {
       try {
-        await axios.post(
-          `${backendUrl}/api/user/updatecart`,
-          { itemId, size, quantity },
-          { headers: { token } }
+        await API.post(
+          "/user/updatecart",
+          { itemId, size, quantity }
         );
+
       } catch (error) {
         console.error(error);
         toast.error("Failed to update cart");
@@ -186,21 +176,47 @@ const [couponCode, setCouponCode] = useState("");
   };
 
   // ─── Cart: Get from Backend (on login) ───────────────────────────────────
-  const getUserCart = async (userToken) => {
+  const getUserCart = async (authToken) => {
+    const tokenToUse = authToken || localStorage.getItem("token");
+    if (!tokenToUse) return;
+
     try {
-      const response = await axios.post(
-        `${backendUrl}/api/user/getcart`,
+      const response = await API.post(
+        "/user/getcart",
         {},
-        { headers: { token: userToken } }
+        { headers: { token: tokenToUse } }
       );
-      if (response.data.success) {
-        setCartItems(response.data.cartData);
+
+      if (response?.data?.success) {
+        setCartItems(response.data.cartData || {});
+        return;
       }
+
+      const message = response?.data?.message || "";
+      console.warn("getUserCart: unexpected response", response?.data);
+
+      if (
+        message.toLowerCase().includes("user not found") ||
+        message.toLowerCase().includes("unauthorized") ||
+        message.toLowerCase().includes("invalid user session")
+      ) {
+        localStorage.removeItem("token");
+        setToken("");
+        return;
+      }
+
+      toast.error(message || "Unable to fetch cart");
     } catch (error) {
       console.error(error);
-      toast.error("Failed to fetch cart");
+      if (error.response?.status === 401) {
+        localStorage.removeItem("token");
+        setToken("");
+        return;
+      }
+      toast.error("Unable to fetch cart");
     }
   };
+
 
   // ─── Cart: Count ─────────────────────────────────────────────────────────
   const getCartCount = () => {
@@ -233,14 +249,14 @@ const [couponCode, setCouponCode] = useState("");
   // ─── Auth: Login ──────────────────────────────────────────────────────────
   const login = async (email, password) => {
     try {
-      const response = await axios.post(`${backendUrl}/api/user/login`, {
+      const response = await API.post("/user/login", {
         email,
         password,
       });
       if (response.data.success) {
         const userToken = response.data.token;
-        setToken(userToken);
         localStorage.setItem("token", userToken);
+        setToken(userToken);
         const existingUser = getStorageJSON("user", null);
         persistUser({
           name: existingUser?.name || email.split("@")[0],
@@ -262,16 +278,17 @@ const [couponCode, setCouponCode] = useState("");
   // ─── Auth: Register ───────────────────────────────────────────────────────
   const register = async (name, email, password) => {
     try {
-      const response = await axios.post(`${backendUrl}/api/user/register`, {
+      const response = await API.post("/user/register", {
         name,
         email,
         password,
       });
       if (response.data.success) {
         const userToken = response.data.token;
-        setToken(userToken);
         localStorage.setItem("token", userToken);
+        setToken(userToken);
         persistUser({ name, email, phone: "" });
+        await getUserCart(userToken);
         navigate("/");
         toast.success("Account created!");
       } else {
@@ -291,27 +308,25 @@ const googleLogin = async () => {
 
     const user = result.user;
 
-    const response = await axios.post(
-      `${backendUrl}/api/user/google`,
-      {
-        name: user.displayName,
-        email: user.email,
-      }
-    );
+    const response = await API.post("/user/google", {
+      name: user.displayName,
+      email: user.email,
+    });
 
     if (response.data.success) {
       const userToken = response.data.token;
-      setToken(userToken);
       localStorage.setItem("token", userToken);
+      setToken(userToken);
       persistUser({
         name: user.displayName || "",
         email: user.email || "",
         phone: "",
       });
-      const userId = response.data.userId;
-      if (userId) localStorage.setItem("userId", userId);
+      await getUserCart(userToken);
       navigate("/");
       toast.success("Google Login Successful");
+    } else {
+      toast.error(response.data.message || "Google login failed");
     }
 
   } catch (error) {
@@ -342,10 +357,12 @@ const googleLogin = async () => {
 
   // Load cart from backend when token is available
   useEffect(() => {
-    if (token) {
+    const stored = localStorage.getItem("token");
+    if (token && stored === token) {
       getUserCart(token);
     }
   }, [token]);
+
 
   useEffect(() => {
     setStorageJSON("cart", cartItems);
