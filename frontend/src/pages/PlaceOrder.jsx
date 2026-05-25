@@ -292,34 +292,34 @@ const PlaceOrder = () => {
           name="firstName"
           onChange={onChangeHandler}
           placeholder="First Name"
-          className="border p-3 rounded-md focus:outline-none focus:border-black"
+          className="border p-3 rounded-md focus:outline-none focus:border-black" required
         />
 
         <input
           name="lastName"
           onChange={onChangeHandler}
           placeholder="Last Name"
-          className="border p-3 rounded-md focus:outline-none focus:border-black"
+          className="border p-3 rounded-md focus:outline-none focus:border-black" required
         />
 
         <input
           name="email"
           onChange={onChangeHandler}
           placeholder="Email"
-          className="border p-3 rounded-md focus:outline-none focus:border-black"
+          className="border p-3 rounded-md focus:outline-none focus:border-black" required
         />
 
         <input
           name="street"
           onChange={onChangeHandler}
           placeholder="Street Address"
-          className="border p-3 rounded-md focus:outline-none focus:border-black"
+          className="border p-3 rounded-md focus:outline-none focus:border-black" required
         />
 
         {/* STATE */}
         <select
           onChange={handleStateChange}
-          className="border p-3 rounded-md"
+          className="border p-3 rounded-md" required
         >
           <option>Select State</option>
           {Object.keys(locationData).map((s) => (
@@ -331,7 +331,7 @@ const PlaceOrder = () => {
         <select
           onChange={handleCityChange}
           disabled={!selectedState}
-          className="border p-3 rounded-md"
+          className="border p-3 rounded-md" required
         >
           <option>Select City</option>
           {selectedState &&
@@ -344,7 +344,7 @@ const PlaceOrder = () => {
         <select
           onChange={handleZipChange}
           disabled={!selectedCity}
-          className="border p-3 rounded-md"
+          className="border p-3 rounded-md" required
         >
           <option>Select Zip</option>
           {zipOptions.map((z) => (
