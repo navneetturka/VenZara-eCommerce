@@ -3,7 +3,14 @@ import mongoose from "mongoose";
 import productModel from "../models/productModel.js";
 
 const ALLOWED_CATEGORIES = ["Men", "Women", "Kids"];
-const ALLOWED_SUBCATEGORIES = ["Topwear", "Bottomwear", "Winterwear"];
+const ALLOWED_SUBCATEGORIES = [
+  "Topwear",
+  "Bottomwear",
+  "Winterwear",
+  "Accessories",
+  "Shoes",
+  "Jewellery",
+];
 
 const uploadBufferToCloudinary = (buffer) => {
   return new Promise((resolve, reject) => {

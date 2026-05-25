@@ -223,6 +223,9 @@ const Add = () => {
               <option>Topwear</option>
               <option>Bottomwear</option>
               <option>Winterwear</option>
+              <option>Accessories</option>
+              <option>Shoes</option>
+              <option>Jewellery</option>
             </select>
           </div>
           <div>
